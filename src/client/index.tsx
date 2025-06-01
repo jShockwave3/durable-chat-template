@@ -13,7 +13,9 @@ import { nanoid } from "nanoid";
 import { names, type ChatMessage, type Message } from "../shared";
 
 function App() {
-  const [name] = useState(names[Math.floor(Math.random() * names.length)]);
+  // Username state: initially empty
+  const [name, setName] = useState("");
+  const [nameSet, setNameSet] = useState(false); // Track if username is set
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const { room } = useParams();
 
@@ -25,7 +27,6 @@ function App() {
       if (message.type === "add") {
         const foundIndex = messages.findIndex((m) => m.id === message.id);
         if (foundIndex === -1) {
-          // probably someone else who added a message
           setMessages((messages) => [
             ...messages,
             {
@@ -36,9 +37,6 @@ function App() {
             },
           ]);
         } else {
-          // this usually means we ourselves added a message
-          // and it was broadcasted back
-          // so let's replace the message with the new message
           setMessages((messages) => {
             return messages
               .slice(0, foundIndex)
@@ -70,8 +68,42 @@ function App() {
     },
   });
 
+  // Username form, only shown if username not set yet
+  if (!nameSet) {
+    return (
+      <div className="chat container">
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (name.trim() !== "") setNameSet(true);
+          }}
+        >
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter your username"
+            className="ten columns my-input-text"
+            autoFocus
+            autoComplete="off"
+          />
+          <button type="submit" className="send-message two columns">
+            Set Username
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // Chat UI, only shown after username is set
   return (
     <div className="chat container">
+      <div className="row">
+        <div className="twelve columns">
+          <strong>Username:</strong> {name}
+        </div>
+      </div>
       {messages.map((message) => (
         <div key={message.id} className="row message">
           <div className="two columns user">{message.user}</div>
@@ -92,15 +124,12 @@ function App() {
             role: "user",
           };
           setMessages((messages) => [...messages, chatMessage]);
-          // we could broadcast the message here
-
           socket.send(
             JSON.stringify({
               type: "add",
               ...chatMessage,
             } satisfies Message),
           );
-
           content.value = "";
         }}
       >
